@@ -41,6 +41,6 @@
     "src/fuzziersort.js"
   ],
   "devDependencies": {
-    "tsdown": "0.15.0"
+    "tsdown": "0.16.0"
   }
 }
