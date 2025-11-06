@@ -1,0 +1,25 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "config:js-lib"],
+  "timezone": "Europe/Amsterdam",
+  "schedule": ["every month"],
+  "configMigration": true,
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "github-actions": {
+    "extends": [":preserveSemverRanges"]
+  },
+  "packageRules": [
+    {
+      "matchDepTypes": ["devDependencies"],
+      "automerge": true
+    },
+    {
+      "matchUpdateTypes": ["patch", "pin", "digest", "lockFileMaintenance"],
+      "automerge": true
+    }
+  ],
+  "automergeStrategy": "squash",
+  "platformAutomerge": true
+}
