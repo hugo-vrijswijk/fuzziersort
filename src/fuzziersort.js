@@ -348,6 +348,39 @@ const all = (targets, options) => {
 }
 
 
+const calculateScore = (searchLen, targetLen, matches, successStrict, nextBeginningIndexes, isSubstring, isSubstringBeginning) => {
+  var score = 0
+
+  var extraMatchGroupCount = 0
+  for(var i = 1; i < searchLen; ++i) {
+    if(matches[i] - matches[i-1] !== 1) {score -= matches[i]; ++extraMatchGroupCount}
+  }
+  var unmatchedDistance = matches[searchLen-1] - matches[0] - (searchLen-1)
+
+  score -= (12+unmatchedDistance) * extraMatchGroupCount // penality for more groups
+
+  if(matches[0] !== 0) score -= matches[0]*matches[0]*.2 // penality for not starting near the beginning
+
+  if(!successStrict) {
+    score *= 1000
+  } else {
+    // successStrict on a target with too many beginning indexes loses points for being a bad target
+    var uniqueBeginningIndexes = 1
+    for(var i = nextBeginningIndexes[0]; i < targetLen; i=nextBeginningIndexes[i]) ++uniqueBeginningIndexes
+
+    if(uniqueBeginningIndexes > 24) score *= (uniqueBeginningIndexes-24)*10 // quite arbitrary numbers here ...
+  }
+
+  score -= (targetLen - searchLen)/2 // penality for longer targets
+
+  if(isSubstring)          score /= 1+searchLen*searchLen*1 // bonus for being a full substring
+  if(isSubstringBeginning) score /= 1+searchLen*searchLen*1 // bonus for substring starting on a beginningIndex
+
+  score -= (targetLen - searchLen)/2 // penality for longer targets
+
+  return score
+}
+
 const algorithm = (preparedSearch, prepared, allowSpaces=false, allowPartialMatch=false) => {
   if(allowSpaces===false && preparedSearch.containsSpace) return algorithmSpaces(preparedSearch, prepared, allowPartialMatch)
 
@@ -428,51 +461,18 @@ const algorithm = (preparedSearch, prepared, allowSpaces=false, allowPartialMatc
   // if it's a simple match, we'll switch to a substring match if a substring exists
   // if it's a strict match, we'll switch to a substring match only if that's a better score
 
-  var calculateScore = matches => {
-    var score = 0
-
-    var extraMatchGroupCount = 0
-    for(var i = 1; i < searchLen; ++i) {
-      if(matches[i] - matches[i-1] !== 1) {score -= matches[i]; ++extraMatchGroupCount}
-    }
-    var unmatchedDistance = matches[searchLen-1] - matches[0] - (searchLen-1)
-
-    score -= (12+unmatchedDistance) * extraMatchGroupCount // penality for more groups
-
-    if(matches[0] !== 0) score -= matches[0]*matches[0]*.2 // penality for not starting near the beginning
-
-    if(!successStrict) {
-      score *= 1000
-    } else {
-      // successStrict on a target with too many beginning indexes loses points for being a bad target
-      var uniqueBeginningIndexes = 1
-      for(var i = nextBeginningIndexes[0]; i < targetLen; i=nextBeginningIndexes[i]) ++uniqueBeginningIndexes
-
-      if(uniqueBeginningIndexes > 24) score *= (uniqueBeginningIndexes-24)*10 // quite arbitrary numbers here ...
-    }
-
-    score -= (targetLen - searchLen)/2 // penality for longer targets
-
-    if(isSubstring)          score /= 1+searchLen*searchLen*1 // bonus for being a full substring
-    if(isSubstringBeginning) score /= 1+searchLen*searchLen*1 // bonus for substring starting on a beginningIndex
-
-    score -= (targetLen - searchLen)/2 // penality for longer targets
-
-    return score
-  }
-
   if(!successStrict) {
     if(isSubstring) for(var i=0; i<searchLen; ++i) matchesSimple[i] = substringIndex+i // at this point it's safe to overwrite matchehsSimple with substr matches
     var matchesBest = matchesSimple
-    var score = calculateScore(matchesBest)
+    var score = calculateScore(searchLen, targetLen, matchesBest, successStrict, nextBeginningIndexes, isSubstring, isSubstringBeginning)
   } else {
     if(isSubstringBeginning) {
       for(var i=0; i<searchLen; ++i) matchesSimple[i] = substringIndex+i // at this point it's safe to overwrite matchehsSimple with substr matches
       var matchesBest = matchesSimple
-      var score = calculateScore(matchesSimple)
+      var score = calculateScore(searchLen, targetLen, matchesSimple, successStrict, nextBeginningIndexes, isSubstring, isSubstringBeginning)
     } else {
       var matchesBest = matchesStrict
-      var score = calculateScore(matchesStrict)
+      var score = calculateScore(searchLen, targetLen, matchesStrict, successStrict, nextBeginningIndexes, isSubstring, isSubstringBeginning)
     }
   }
 
@@ -487,8 +487,13 @@ const algorithm = (preparedSearch, prepared, allowSpaces=false, allowPartialMatc
   result._indexes = prepared._indexes
   return result
 }
+
+// Return _nextBeginningIndexes back to its normal state.
+const resetNextBeginningIndexes = (target, changeslen) => {
+  for(let i=changeslen-1; i>=0; i--) target._nextBeginningIndexes[nextBeginningIndexesChanges[i*2 + 0]] = nextBeginningIndexesChanges[i*2 + 1]
+}
 const algorithmSpaces = (preparedSearch, target, allowPartialMatch) => {
-  var seen_indexes = new Set()
+  var seen_indexes = seenIndexes; seen_indexes.clear()
   var score = 0
   var result = NULL
 
@@ -496,11 +501,6 @@ const algorithmSpaces = (preparedSearch, target, allowPartialMatch) => {
   var searches = preparedSearch.spaceSearches
   var searchesLen = searches.length
   var changeslen = 0
-
-  // Return _nextBeginningIndexes back to its normal state
-  var resetNextBeginningIndexes = () => {
-    for(let i=changeslen-1; i>=0; i--) target._nextBeginningIndexes[nextBeginningIndexesChanges[i*2 + 0]] = nextBeginningIndexesChanges[i*2 + 1]
-  }
 
   var hasAtLeast1Match = false
   for(var i=0; i<searchesLen; ++i) {
@@ -512,7 +512,7 @@ const algorithmSpaces = (preparedSearch, target, allowPartialMatch) => {
       if(result === NULL) continue
       hasAtLeast1Match = true
     } else {
-      if(result === NULL) {resetNextBeginningIndexes(); return NULL}
+      if(result === NULL) {resetNextBeginningIndexes(target, changeslen); return NULL}
     }
 
     // if not the last search, we need to mutate _nextBeginningIndexes for the next search
@@ -554,7 +554,7 @@ const algorithmSpaces = (preparedSearch, target, allowPartialMatch) => {
 
   if(allowPartialMatch && !hasAtLeast1Match) return NULL
 
-  resetNextBeginningIndexes()
+  resetNextBeginningIndexes(target, changeslen)
 
   // allows a search with spaces that's an exact substring to score well
   var allowSpacesResult = algorithm(preparedSearch, target, /*allowSpaces=*/true)
@@ -648,6 +648,7 @@ var matchesSimple = []; var matchesStrict = []
 var nextBeginningIndexesChanges = [] // allows straw berry to match strawberry well, by modifying the end of a substring to be considered a beginning index for the rest of the search
 var keysSpacesBestScores = []; var allowPartialMatchScores = []
 var tmpTargets = []; var tmpResults = []
+var seenIndexes = new Set()
 
 // prop = 'key'                  2.5ms optimized for this case, seems to be about as fast as direct obj[prop]
 // prop = 'key1.key2'            10ms
