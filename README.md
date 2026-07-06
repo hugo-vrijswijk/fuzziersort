@@ -168,6 +168,10 @@ fuzziersort.go('fast',  targets, options)
 
 ### Changelog
 
+#### v4.0.2
+
+- Performance: move function definitions outside closure to top-level
+
 #### v4.0.1
 
 - Run publish in CI/CD workflows

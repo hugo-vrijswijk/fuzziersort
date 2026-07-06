@@ -1,6 +1,6 @@
 {
   "name": "fuzziersort",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "author": "farzher",
   "license": "MIT",
   "description": "Fast SublimeText-like fuzzy search for JavaScript",
@@ -16,7 +16,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hugo-vrijswijk/fuzzysort.git"
+    "url": "git+https://github.com/hugo-vrijswijk/fuzziersort.git"
   },
   "type": "module",
   "main": "./dist/fuzziersort.cjs",
