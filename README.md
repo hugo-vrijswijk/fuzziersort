@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> Deprecated! Fuzzysort now publishes ESM. Use `fuzzysort@^4` instead.
+
 <p align="center"><a href="https://raw.github.com/farzher/fuzzysort/master/fuzzysort.js">
   <img src="https://i.imgur.com/axkOMVs.png" alt="fuzzysort" />
 </a></p>
